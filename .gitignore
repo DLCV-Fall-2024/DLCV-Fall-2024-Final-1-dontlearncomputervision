@@ -5,7 +5,7 @@ test/
 val/
 *.zip
 *.json
-*.ipynb
+# *.ipynb
 .txt
 !few_shot/**/*.json
 dlcv_final_dataset/*
