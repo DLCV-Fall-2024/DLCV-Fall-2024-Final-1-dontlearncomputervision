@@ -15,9 +15,7 @@ from argparse import ArgumentParser
 from transformers import AutoProcessor, LlavaForConditionalGeneration
 from transformers import AutoTokenizer, AutoImageProcessor, BitsAndBytesConfig
 from transformers import TrainingArguments
-
-import loralib as lora
-from peft import get_peft_config, get_peft_model, LoraConfig, TaskType
+from utils import *
 """
 split can be: “train”, “val”, “test”
 You can use the “streaming” argument to avoid downloading whole data
@@ -27,28 +25,28 @@ streaming or local?: https://huggingface.co/docs/datasets/en/about_mapstyle_vs_i
 load then preprocess: https://huggingface.co/docs/diffusers/en/training/unconditional_training
 """
 
-model_id = "llava-hf/llava-1.5-7b-hf"
-processor = AutoProcessor.from_pretrained(model_id)
-def preprocess_data(batch):
-    def conver_to_template(conversation):
-        """    
-        from: <image>\nThere is an image of traffic captured from the perspective of the ego car. Focus on objects influencing the ego car's driving behavior: vehicles (cars, trucks, buses, etc.), vulnerable road users (pedestrians, cyclists, motorcyclists), traffic signs (no parking, warning, directional, etc.), traffic lights (red, green, yellow), traffic cones, barriers, miscellaneous(debris, dustbin, animals, etc.). You must not discuss any objects beyond the seven categories above. Please describe each object's appearance, position, direction, and explain why it affects the ego car's behavior.
-        to: prompt= 'USER: <image>\nPlease give me a one sentence caption about the image. ASSISTANT:'
-        """    
-        template=f'USER: {conversation} ASSISTANT:'
-        return template
-    image=[]
-    text=[]
-    image_names=[]
-    for data in batch:
-        process_text=conver_to_template(data['conversations'][0]['value'])
-        image.append(data['image'])
-        text.append(process_text)
-        image_names.append(data['id'])
-    inputs = processor(images=image, text=text,  padding=True, return_tensors='pt')        
-    # inputs['ids']=image_name
-    # print(inputs['pixel_values'].shape)
-    return inputs, image_names
+# model_id = "llava-hf/llava-1.5-7b-hf"
+# processor = AutoProcessor.from_pretrained(model_id)
+# def preprocess_data(batch):
+#     def conver_to_template(conversation):
+#         """    
+#         from: <image>\nThere is an image of traffic captured from the perspective of the ego car. Focus on objects influencing the ego car's driving behavior: vehicles (cars, trucks, buses, etc.), vulnerable road users (pedestrians, cyclists, motorcyclists), traffic signs (no parking, warning, directional, etc.), traffic lights (red, green, yellow), traffic cones, barriers, miscellaneous(debris, dustbin, animals, etc.). You must not discuss any objects beyond the seven categories above. Please describe each object's appearance, position, direction, and explain why it affects the ego car's behavior.
+#         to: prompt= 'USER: <image>\nPlease give me a one sentence caption about the image. ASSISTANT:'
+#         """    
+#         template=f'USER: {conversation} ASSISTANT:'
+#         return template
+#     image=[]
+#     text=[]
+#     image_names=[]
+#     for data in batch:
+#         process_text=conver_to_template(data['conversations'][0]['value'])
+#         image.append(data['image'])
+#         text.append(process_text)
+#         image_names.append(data['id'])
+#     inputs = processor(images=image, text=text,  padding=True, return_tensors='pt')        
+#     # inputs['ids']=image_name
+#     # print(inputs['pixel_values'].shape)
+#     return inputs, image_names
 
 def inference(args):
 
