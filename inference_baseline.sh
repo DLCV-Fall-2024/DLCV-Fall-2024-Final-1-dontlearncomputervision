@@ -1,0 +1,1 @@
+python inference/inference_only.py --model llava-hf/llava-1.5-7b-hf --save_json_path inference/baseline.json --batch_size 4

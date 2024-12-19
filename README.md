@@ -1,4 +1,5 @@
 # DLCV Final Project
+https://docs.google.com/presentation/d/1eeXx_dL0OgkDn9_lhXnimTHrE6OYvAiiVOBwo2CTVOQ/edit#slide=id.g319b4042369_5_35
 
 # How to run your code?
 * TODO: Please provide the scripts for TAs to reproduce your results, including training and inference. For example, 
