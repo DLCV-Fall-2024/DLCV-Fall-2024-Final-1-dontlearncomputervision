@@ -38,7 +38,7 @@ def conver_to_template(conversation, ground_truth=None):
     to: prompt= 'USER: <image>\nPlease give me a one sentence caption about the image.\nASSISTANT:'
     """    
     # template=f'USER: {conversation} ASSISTANT: {ground_truth}'
-    template=f'USER: {conversation}\nASSISTANT: {ground_truth}'
+    template=f'USER: {conversation}\nASSISTANT: {ground_truth}</s>'
     # print(template)
     return template
     
@@ -64,23 +64,26 @@ class LLavaDataCollator:
         # print(f"{inputs['input_ids'].shape=}") # torch.Size([b, n<2048])
         # print(f"{inputs['input_ids']=}") # torch.Size([b, n<2048])
 
-
+        EOL_TOKEN=2
         labels=self.processor.tokenizer(data['conversations'][1]['value'])['input_ids']
+        # print(f"{labels[0]=}")
+        labels=labels[1:]
+        labels.append(EOL_TOKEN)
         labels=torch.tensor(labels).unsqueeze(0)
-        labels[0] = -100 # ??? should i do this?
+        # labels[0] = -100 # ??? should i do this?
         # print(f"{labels=}") # torch.Size([b, n<2048])
         
         # step: pad ground_truth
         paddings= max(inputs['input_ids'].shape[1], labels.shape[1]) - labels.shape[1]
-        m = torch.nn.ConstantPad2d((paddings,0), -100)
+        m = torch.nn.ConstantPad2d((paddings, 0), -100)
         labels=m(labels)
 
-        # print(f"{labels.shape=}") # torch.Size([b, n<2048])
     
         # TODO: mask label
         # labels = inputs["input_ids"].clone()
         # print(labels)
         labels[labels == self.processor.tokenizer.pad_token_id] = -100
+        # print(f"{labels.shape=}") # torch.Size([b, n<2048])
         # print(labels)
         inputs['labels']=labels
         # print(inputs)
@@ -142,7 +145,7 @@ def train(args):
     # print(dataset_test[0])
     # # step: Training setting
     training_args = TrainingArguments(
-        output_dir="./finetune_llava-1.5-7b-hf_lora_2",
+        output_dir="./finetune_llava-1.5-7b-hf_lora_3",
         num_train_epochs=1,
         # max_steps=14405,
         do_train=True,
