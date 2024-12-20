@@ -24,6 +24,7 @@ def preprocess_data(batch):
     # print(inputs['pixel_values'].shape)
     return inputs, image_names
 
+# TODO: adding RAG into data processing 
 def preprocess_data_prompt_tuning(batch):
     def conver_to_template(task, conversation, retrieve_conversation):
         """    
@@ -62,13 +63,17 @@ def preprocess_data_prompt_tuning(batch):
             
     image=[]
     text=[]
+    image_names=[]
     # TODO: RAG retrieve data
     RAG=""
 
     for data in batch:
-        process_text=conver_to_template(data['id'], data['conversations'][0]['value'],"RAG top 1 conversation")
+        process_text=conver_to_template(data['id'], data['conversations'][0]['value'], RAG)
         print(process_text)
         image.append(data['image'])
         text.append(process_text)
+        image_names.append(data['id'])
     inputs = processor(images=image, text=text,  padding=True, return_tensors='pt')        
-    return inputs
+    # inputs['ids']=image_name
+    # print(inputs['pixel_values'].shape)
+    return inputs, image_names

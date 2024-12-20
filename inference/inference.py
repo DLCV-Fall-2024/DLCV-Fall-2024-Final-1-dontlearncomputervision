@@ -1,20 +1,11 @@
-from transformers import TrainingArguments
-from transformers import Trainer
-
 from datasets import load_dataset
-from torch.utils.data import DataLoader, Dataset
-import torchvision.transforms as transforms
-from PIL import Image
-import os
+from torch.utils.data import DataLoader
 import torch
 import json
-import timm
-import open_clip
 from tqdm import tqdm
 from argparse import ArgumentParser
-from transformers import AutoProcessor, LlavaForConditionalGeneration
-from transformers import AutoTokenizer, AutoImageProcessor, BitsAndBytesConfig
-from transformers import TrainingArguments
+from transformers import LlavaForConditionalGeneration
+from transformers import BitsAndBytesConfig
 from utils import *
 """
 split can be: “train”, “val”, “test”
@@ -24,29 +15,6 @@ how to use?:    https://huggingface.co/docs/datasets/en/stream
 streaming or local?: https://huggingface.co/docs/datasets/en/about_mapstyle_vs_iterable
 load then preprocess: https://huggingface.co/docs/diffusers/en/training/unconditional_training
 """
-
-# model_id = "llava-hf/llava-1.5-7b-hf"
-# processor = AutoProcessor.from_pretrained(model_id)
-# def preprocess_data(batch):
-#     def conver_to_template(conversation):
-#         """    
-#         from: <image>\nThere is an image of traffic captured from the perspective of the ego car. Focus on objects influencing the ego car's driving behavior: vehicles (cars, trucks, buses, etc.), vulnerable road users (pedestrians, cyclists, motorcyclists), traffic signs (no parking, warning, directional, etc.), traffic lights (red, green, yellow), traffic cones, barriers, miscellaneous(debris, dustbin, animals, etc.). You must not discuss any objects beyond the seven categories above. Please describe each object's appearance, position, direction, and explain why it affects the ego car's behavior.
-#         to: prompt= 'USER: <image>\nPlease give me a one sentence caption about the image. ASSISTANT:'
-#         """    
-#         template=f'USER: {conversation} ASSISTANT:'
-#         return template
-#     image=[]
-#     text=[]
-#     image_names=[]
-#     for data in batch:
-#         process_text=conver_to_template(data['conversations'][0]['value'])
-#         image.append(data['image'])
-#         text.append(process_text)
-#         image_names.append(data['id'])
-#     inputs = processor(images=image, text=text,  padding=True, return_tensors='pt')        
-#     # inputs['ids']=image_name
-#     # print(inputs['pixel_values'].shape)
-#     return inputs, image_names
 
 def inference(args):
 
@@ -80,12 +48,15 @@ def inference(args):
     # step: load and prepare dataset
     dataset_test= load_dataset("ntudlcv/dlcv_2024_final1",split='test')
     dataset_test= dataset_test.with_format("torch")
-    dataloader_test=DataLoader(dataset_test, batch_size=args.batch_size, collate_fn=preprocess_data, shuffle=False)
+    
+    preprocess= preprocess_data if args.use_prompt_tuning == False else preprocess_data_prompt_tuning
+    dataloader_test=DataLoader(dataset_test, batch_size=args.batch_size, collate_fn=preprocess, shuffle=False)
     print(f"{len(dataloader_test)=}")
 
 
     # step: inference
     # caption_dict={}
+    # TODO: case, if json file not exist
     with open(save_json_path, "r") as f:  # reading a file
         caption_dict = json.load(f)  # deserialization
 
@@ -93,7 +64,7 @@ def inference(args):
         # print(inputs)
         # step: model 
         inputs=inputs.to(0)
-        cap_output = model.generate(**inputs, max_new_tokens=400, do_sample=False)
+        cap_output = model.generate(**inputs, max_new_tokens=500, do_sample=False)
 
         # step: saving
         for j, image_name in enumerate(image_names):
@@ -108,7 +79,8 @@ if __name__=="__main__":
     parser = ArgumentParser()
     parser.add_argument("--model", default="llava-hf/llava-1.5-7b-hf", help="Image root")
     parser.add_argument("--save_json_path", default="inference/baseline.json", help="output json file")
-    parser.add_argument("--batch_size", default=4, type=int, help="Image root")
+    parser.add_argument("--batch_size", default=4, type=int, help="batch size")
+    parser.add_argument("--use_prompt_tuning", action='store_true', help="use_prompt_tuning or not")
     args = parser.parse_args()
     
     inference(args)
