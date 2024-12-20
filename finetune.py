@@ -70,8 +70,6 @@ class LLavaDataCollator:
         labels=labels[1:]
         labels.append(EOL_TOKEN)
         labels=torch.tensor(labels).unsqueeze(0)
-        # labels[0] = -100 # ??? should i do this?
-        # print(f"{labels=}") # torch.Size([b, n<2048])
         
         # step: pad ground_truth
         paddings= max(inputs['input_ids'].shape[1], labels.shape[1]) - labels.shape[1]
@@ -99,7 +97,8 @@ def train(args):
     """
     EPOCH=1
     # step: load and prepare model, https://huggingface.co/llava-hf/llava-1.5-7b-hf
-    model_id = "llava-hf/llava-1.5-7b-hf"
+    # model_id = "llava-hf/llava-1.5-7b-hf"
+    model_id = "finetune_llava-1.5-7b-hf_lora_3/checkpoint-28810"
     bnb_config=BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_use_double_quant=True,
@@ -116,7 +115,7 @@ def train(args):
         # load_in_4bit=True
     )
 
-    processor = AutoProcessor.from_pretrained(model_id)
+    processor = AutoProcessor.from_pretrained("llava-hf/llava-1.5-7b-hf")
     data_collator = LLavaDataCollator(processor)
 
     # print(processor)
@@ -145,7 +144,7 @@ def train(args):
     # print(dataset_test[0])
     # # step: Training setting
     training_args = TrainingArguments(
-        output_dir="./finetune_llava-1.5-7b-hf_lora_3",
+        output_dir="./finetune_llava-1.5-7b-hf_lora_3_2",
         num_train_epochs=1,
         # max_steps=14405,
         do_train=True,
