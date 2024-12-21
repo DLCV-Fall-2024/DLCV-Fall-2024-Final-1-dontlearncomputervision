@@ -52,15 +52,18 @@ if __name__ == '__main__':
     cmap = matplotlib.colormaps.get_cmap('Spectral_r')
 
     # load dataset from the given path
-    dataset = load_dataset("../data/dlcv_2024_final1", split='train')
+    dataset = load_dataset("../data/dlcv_2024_final1", split='validation')
     
     for i, data in enumerate(dataset):
 
-        if i == 5: break
-        print(f"processing the {i}th image. fuckDLCV ==")
+        # if i == 5: break
+        print(f"processing the {i}th image. :)")
 
-        # PIL image
         raw_image = data['image']
+        # print(type(raw_image)) # PIL.PngImagePlugin.PngImageFile
+
+        # convert input type to numpy.ndarray
+        raw_image = np.array(raw_image)
 
         depth = depth_anything.infer_image(raw_image, args.input_size)
         depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
