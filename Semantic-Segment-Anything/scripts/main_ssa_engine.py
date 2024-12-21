@@ -106,8 +106,8 @@ def main(rank, args):
     print('Dataset loaded.')
 
     for i, data in tqdm(enumerate(dataset)):
-        if i == 10:
-            break
+        # if i == 10:
+        #     break
         raw_image = data['image']
         with torch.no_grad():
             semantic_annotation_pipeline(raw_image, i, args.data_dir, args.out_dir, rank, save_img=args.save_img,
