@@ -22,13 +22,13 @@ for i, data in enumerate(dataset_test):
 # for i in range(5):
     if i==5 : break
     # print("round:", i)
-    image = Image.open(f'./input/image{i}.jpg').convert('RGB')
+    # image = Image.open(f'./input/image{i}.jpg').convert('RGB')
 
-    print(type(image))
+    # print(type(image))
 
     image = data['image']
-    print(image.shape)
-    print(type(image))
+    print(image.shape) # torch.Size([3, 720, 1355])
+    print(type(image)) # <class 'torch.Tensor'>
 
     
     pixel_values = image_processor(images=image, return_tensors='pt').pixel_values

@@ -13,7 +13,7 @@ all_embeddings = []
 
 for i in range(8716):
     print(f"CLIP: Processing the {i}th image.")
-    image = preprocess(Image.open(f"./output/val/depth_image{i}.png")).unsqueeze(0).to(device)
+    image = preprocess(Image.open(f"../depth_anything_v2/output/1.png")).unsqueeze(0).to(device)
     # print(type(image))  # torch.Tensor
     # print(image.shape)  # torch.Size([1, 3, 224, 224])
 
@@ -43,7 +43,6 @@ with open(output_json_path, "w") as json_file:
     json.dump(all_embeddings, json_file)
 
 print(f"Embeddings saved to {output_json_path}")
-
 
 # # ------------------------------------------------------------------------ FAISS ------------------------------------------------------------------------
 # # Set dimensions and number of data points
