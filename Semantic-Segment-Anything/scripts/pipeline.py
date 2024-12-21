@@ -106,7 +106,6 @@ def semantic_annotation_pipeline(filename, data_path, output_path, rank, save_im
         ann['class_proposals'] = mask_categories
 
         class_names.append(str(top_1_mask_category))
-        print(class_names)
         # bitmasks.append(maskUtils.decode(ann['segmentation']))
 
         # Delete variables that are no longer needed
@@ -121,6 +120,8 @@ def semantic_annotation_pipeline(filename, data_path, output_path, rank, save_im
         del op_class_list
         del mask_categories
         del class_ids_patch_huge
+
+    print(class_names)
         
     mmcv.dump(anns, os.path.join(output_path, filename + '_semantic.json'))
     print('[Save] save SSA-engine annotation results: ', os.path.join(output_path, filename + '_semantic.json'))

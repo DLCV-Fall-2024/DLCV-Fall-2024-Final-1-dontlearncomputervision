@@ -1,0 +1,8 @@
+keywords = {
+    "vehicles": ["aircraft carrier", "airliner", "airship", "amphibious vehicle", "ambulance", "beach wagon", "bus", "car", "station wagon", "wagon", "convertible", "fireboat", "fire engine", "fire truck", "forklift", "garbage truck", "jeep", "limousine", "limo", "minibus", "minivan", "mobile home", "manufactured home", "Model T", "motor scooter", "scooter", "mountain bike", "all-terrain bike", "off-roader", "van", "moving van", "oxcart", "passenger car", "coach", "carriage", "pickup", "pickup truck", "police van", "police wagon", "police car", "paddy wagon", "patrol wagon", "wagon", "black Maria", "racer", "race car", "racing car", "recreational vehicle", "RV", "R.V.", "streetcar", "tram", "tramcar", "trolley", "trolley car", "tow truck", "tow car", "wrecker", "trailer truck", "tractor trailer", "trucking rig", "rig", "truck", "articulated lorry", "trolleybus", "trolley coach", "trackless trolley", "warplane", "military plane", "snowmobile", "submarine", "pigboat", "sub", "U-boat", "school bus"],
+    "vulnerable_road_users": ["ballplayer", "baseball player", "groom", "bridegroom", "scuba diver", "person"],
+    "traffic_signs": ["street sign", "traffic sign", "signboard", "sign", "crosswalk", "crosswalk signal"],
+    "traffic_lights": ["traffic light", "traffic signal", "stoplight"],
+    "traffic_cones": ["traffic cone"],
+    "barriers": ["breakwater", "groin", "groyne", "mole", "bulwark", "seawall", "jetty", "barricade", "fence", "wall", "barrier"],
+}
