@@ -1,12 +1,15 @@
 import os
 import torch
 import argparse
+from tqdm import tqdm
 
 from pipeline import semantic_annotation_pipeline
 from transformers import CLIPProcessor, CLIPModel
 from transformers import AutoProcessor, CLIPSegForImageSegmentation
 from transformers import OneFormerProcessor, OneFormerForUniversalSegmentation
 from transformers import BlipProcessor, BlipForConditionalGeneration
+
+from datasets import load_dataset
 
 import torch.distributed as dist
 import torch.multiprocessing as mp
@@ -96,14 +99,32 @@ def main(rank, args):
         print('Total number of files: ', len(filenames))
     local_filenames = filenames[(len(filenames) // args.world_size + 1) * rank : (len(filenames) // args.world_size + 1) * (rank + 1)]
 
-    for file_name in local_filenames:
+    # Load and process dataset images
+
+    print('Loading dataset...')
+    dataset = load_dataset("../data/dlcv_2024_final1", split='validation')
+    print('Dataset loaded.')
+
+    for i, data in tqdm(enumerate(dataset)):
+        if i == 10:
+            break
+        raw_image = data['image']
         with torch.no_grad():
-            semantic_annotation_pipeline(file_name, args.data_dir, args.out_dir, rank, save_img=args.save_img,
+            semantic_annotation_pipeline(raw_image, i, args.data_dir, args.out_dir, rank, save_img=args.save_img,
                                         clip_processor=clip_processor, clip_model=clip_model,
                                         oneformer_ade20k_processor=oneformer_ade20k_processor, oneformer_ade20k_model=oneformer_ade20k_model,
                                         oneformer_coco_processor=oneformer_coco_processor, oneformer_coco_model=oneformer_coco_model,
                                         blip_processor=blip_processor, blip_model=blip_model,
                                         clipseg_processor=clipseg_processor, clipseg_model=clipseg_model, mask_generator=mask_generator)
+
+    # for file_name in local_filenames:
+    #     with torch.no_grad():
+    #         semantic_annotation_pipeline(file_name, args.data_dir, args.out_dir, rank, save_img=args.save_img,
+    #                                     clip_processor=clip_processor, clip_model=clip_model,
+    #                                     oneformer_ade20k_processor=oneformer_ade20k_processor, oneformer_ade20k_model=oneformer_ade20k_model,
+    #                                     oneformer_coco_processor=oneformer_coco_processor, oneformer_coco_model=oneformer_coco_model,
+    #                                     blip_processor=blip_processor, blip_model=blip_model,
+    #                                     clipseg_processor=clipseg_processor, clipseg_model=clipseg_model, mask_generator=mask_generator)
         # torch.cuda.empty_cache()
 if __name__ == '__main__':
     args = parse_args()

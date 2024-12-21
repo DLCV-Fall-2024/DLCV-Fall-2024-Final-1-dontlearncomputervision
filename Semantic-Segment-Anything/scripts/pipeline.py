@@ -5,6 +5,7 @@ from PIL import Image
 import mmcv
 from tqdm import tqdm
 from mmcv.utils import print_log
+from mmcv.image.io import _pillow2array
 from mmdet.core.visualization.image import imshow_det_bboxes
 from mmseg.core import intersect_and_union, pre_eval_to_metrics
 from collections import OrderedDict
@@ -47,7 +48,7 @@ def load_filename_with_extensions(data_path, filename):
             return full_file_path + ext  # Return True if file is successfully uploaded
     raise FileNotFoundError(f"No such file {full_file_path}, checked for the following extensions {image_extensions}")
 
-def semantic_annotation_pipeline(filename, data_path, output_path, rank, save_img=False, scale_small=1.2, scale_large=1.6, scale_huge=1.6,
+def semantic_annotation_pipeline(raw_image, index, data_path, output_path, rank, save_img=False, scale_small=1.2, scale_large=1.6, scale_huge=1.6,
                                  clip_processor=None,
                                  clip_model=None,
                                  oneformer_ade20k_processor=None,
@@ -59,9 +60,14 @@ def semantic_annotation_pipeline(filename, data_path, output_path, rank, save_im
                                  clipseg_processor=None,
                                  clipseg_model=None,
                                  mask_generator=None):
-    img = mmcv.imread(load_filename_with_extensions(data_path, filename))
+    # img = mmcv.imread(load_filename_with_extensions(data_path, filename))
+
+    img = _pillow2array(raw_image, flag = 'color', channel_order = 'bgr')
+
+    index = str(index)
+
     if mask_generator is None:
-        anns = mmcv.load(os.path.join(data_path, filename+'.json'))
+        anns = mmcv.load(os.path.join(data_path, 'image'+ index +'.json'))
     else:
         anns = {'annotations': mask_generator.generate(img)}
     bitmasks, class_names = [], []
@@ -123,8 +129,8 @@ def semantic_annotation_pipeline(filename, data_path, output_path, rank, save_im
 
     print(class_names)
         
-    mmcv.dump(anns, os.path.join(output_path, filename + '_semantic.json'))
-    print('[Save] save SSA-engine annotation results: ', os.path.join(output_path, filename + '_semantic.json'))
+    mmcv.dump(anns, os.path.join(output_path, index + '_semantic.json'))
+    print('[Save] save SSA-engine annotation results: ', os.path.join(output_path, index + '_semantic.json'))
     if save_img:
         for ann in anns['annotations']:
             bitmasks.append(maskUtils.decode(ann['segmentation']))
@@ -135,7 +141,7 @@ def semantic_annotation_pipeline(filename, data_path, output_path, rank, save_im
                     class_names=class_names,
                     font_size=25,
                     show=False,
-                    out_file=os.path.join(output_path, filename+'_semantic.png'))
+                    out_file=os.path.join(output_path, index+'_semantic.png'))
 
     # Delete variables that are no longer needed
     del img
