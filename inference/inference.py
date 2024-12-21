@@ -52,7 +52,7 @@ def inference(args):
     dataset_test= dataset_test.with_format("torch")
     
     preprocess= preprocess_data if args.use_prompt_tuning == False else preprocess_data_prompt_tuning
-    dataloader_test=DataLoader(dataset_test, batch_size=args.batch_size, collate_fn=preprocess, shuffle=False)
+    dataloader_test=DataLoader(dataset_test, batch_size=args.batch_size, collate_fn=preprocess, shuffle=True)
     print(f"{len(dataloader_test)=}")
 
 

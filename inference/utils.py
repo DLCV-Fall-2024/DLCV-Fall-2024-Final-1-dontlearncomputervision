@@ -62,6 +62,7 @@ def preprocess_data_prompt_tuning(batch):
         """    
         prompt=""
         RAG_example_text=retrieve_conversation            
+        prompt_charactor="You are a traffic analysis assistant. "
         prompt_context="Here is a similar example for the following task:\n"+ RAG_example_text
         # TODO: process three type of template 
         if 'general' in task:
@@ -69,7 +70,7 @@ def preprocess_data_prompt_tuning(batch):
             # origianl prompt
             prompt_constrain="There is an image of traffic captured from the perspective of the ego car. Focus on objects influencing the ego car's driving behavior: vehicles (cars, trucks, buses, etc.), vulnerable road users (pedestrians, cyclists, motorcyclists), traffic signs (no parking, warning, directional, etc.), traffic lights (red, green, yellow), traffic cones, barriers, miscellaneous(debris, dustbin, animals, etc.). You must not discuss any objects beyond the seven categories above.\n"
             prompt_command="\nPlease describe each object's appearance, position, direction, and explain why it affects the ego car's behavior."
-            prompt=prompt_constrain+prompt_context+prompt_command
+            prompt=prompt_charactor+prompt_constrain+prompt_context+prompt_command
             
         elif 'suggestion' in task:
             """
@@ -77,7 +78,7 @@ def preprocess_data_prompt_tuning(batch):
             """
             prompt_constrain="There is an image of traffic captured from the perspective of the ego car. Focus on objects influencing the ego car's driving behavior: vehicles (cars, trucks, buses, etc.), vulnerable road users (pedestrians, cyclists, motorcyclists), traffic signs (no parking, warning, directional, etc.), traffic lights (red, green, yellow), traffic cones, barriers, miscellaneous(debris, dustbin, animals, etc.). You must not discuss any objects beyond the seven categories above.\n"
             prompt_command= "\nPlease provide driving suggestions for the ego car based on the current scene."
-            prompt=prompt_constrain+prompt_context+prompt_command
+            prompt=prompt_charactor+prompt_constrain+prompt_context+prompt_command
             
         elif 'regional' in task:
             """
@@ -85,7 +86,7 @@ def preprocess_data_prompt_tuning(batch):
             """
             # prompt_context="Here is a similar example for the following task:\n"+ RAG_example_text
             prompt_command="\nPlease describe the object inside the red rectangle in the image and explain why it affect ego car driving."
-            prompt=prompt_context+prompt_command
+            prompt=prompt_charactor+prompt_context+prompt_command
             
         template=f'USER: <image>\n{prompt} ASSISTANT:'
         return template
