@@ -1,6 +1,7 @@
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 import torch
+import os
 import json
 from tqdm import tqdm
 from argparse import ArgumentParser
@@ -43,6 +44,7 @@ def inference(args):
         # low_cpu_mem_usage=True,
         # load_in_4bit=True
     )
+    model.eval()
     # processor = AutoProcessor.from_pretrained(model_id)
 
     # step: load and prepare dataset
@@ -55,16 +57,17 @@ def inference(args):
 
 
     # step: inference
-    # caption_dict={}
+    caption_dict={}
     # TODO: case, if json file not exist
-    with open(save_json_path, "r") as f:  # reading a file
-        caption_dict = json.load(f)  # deserialization
+    if os.path.exists(save_json_path):
+        with open(save_json_path, "r") as f:  # reading a file
+            caption_dict = json.load(f)  # deserialization
 
     for _, (inputs, image_names) in tqdm(enumerate(dataloader_test), total=len(dataloader_test)):
         # print(inputs)
         # step: model 
         inputs=inputs.to(0)
-        cap_output = model.generate(**inputs, max_new_tokens=500, do_sample=False)
+        cap_output = model.generate(**inputs, max_new_tokens=400, do_sample=False)
 
         # step: saving
         for j, image_name in enumerate(image_names):
