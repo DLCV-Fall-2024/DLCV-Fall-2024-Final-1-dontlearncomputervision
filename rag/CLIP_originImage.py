@@ -4,16 +4,23 @@ import faiss
 import torch
 from PIL import Image
 import numpy as np
+from datasets import load_dataset
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device)
 
+dataset = load_dataset("../data/dlcv_2024_final1", split='validation')
+# dataset = dataset.with_format("torch")
+
+
 all_embeddings = []
 
-for i in range(8716):
-    print(f"CLIP: Processing the {i}th image.")
-    image = preprocess(Image.open(f"./output/val/depth_image{i}.png")).unsqueeze(0).to(device)
+for i, data in enumerate(dataset):
+    print(f"CLIP: Processing the {i}th original data (val).")
+
+    image = data['image']
+    image = preprocess(image).unsqueeze(0).to(device)
     # print(type(image))  # torch.Tensor
     # print(image.shape)  # torch.Size([1, 3, 224, 224])
 
@@ -36,7 +43,7 @@ for i in range(8716):
 
 # ------------------------------------------------------------------------ Save the embeddings into json ------------------------------------------------------------------------
 # Define the output JSON file path
-output_json_path = "./depth_map_val_embeddings_CLIP.json"
+output_json_path = "./original_images_val_embeddings_CLIP.json"
 
 # Save embeddings to a JSON file
 with open(output_json_path, "w") as json_file:
