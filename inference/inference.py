@@ -53,12 +53,12 @@ def inference(args):
     print(f"{len(dataset_test)=}")
     
     # TODO: seperate dataset into three different datasets for inference using "filter", https://huggingface.co/docs/datasets/en/process#shuffle
-    task_names=['general', 'suggestion', 'regional']
+    task_names=[ 'regional', 'suggestion', 'general',]
     # task_1_dataset=dataset_test.filter(lambda example: 'general' in example["id"])
     # task_2_dataset=dataset_test.filter(lambda example: 'region' in example["id"])
     # task_3_dataset=dataset_test.filter(lambda example: 'suggest' in example["id"])
     # dataset_test=[task_1_dataset, task_2_dataset, task_3_dataset]
-    dataset_test=[dataset_test.filter(lambda example: task_name in example["id"]) for task_name in task_names]
+    dataset_test=[dataset_test.filter(function=lambda example: task_name in example["id"], batch_size=16) for task_name in task_names]
     for task in dataset_test: print(len(task))
     
     # step: put them into three seperate dataloader
@@ -79,6 +79,8 @@ def inference(args):
         print(f"==== inference task: {task_names[i]} ====")
         for _, (inputs, image_names) in tqdm(enumerate(task_i_dataloader), total=len(task_i_dataloader)):
             # print(inputs)
+            if image_names[0] in  caption_dict: continue #for resume
+            
             # step: model 
             inputs=inputs.to(0)
             cap_output = model.generate(**inputs, max_new_tokens=400, do_sample=False)
