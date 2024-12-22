@@ -1,1 +1,1 @@
-python inference/inference.py --model finetune_llava-1.5-7b-hf_lora_3_2/checkpoint-28810 --save_json_path inference/finetuned_lora_28810_3_2.json --batch_size 16
+python inference/inference.py  --use_prompt_tuning --model finetune_llava-1.5-7b-hf_lora_4/checkpoint-57620 --save_json_path inference/finetuned_lora_57620_4_use_prompt_tuning_3.json --batch_size 4
