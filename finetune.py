@@ -27,24 +27,21 @@ streaming or local?: https://huggingface.co/docs/datasets/en/about_mapstyle_vs_i
 load then preprocess: https://huggingface.co/docs/diffusers/en/training/unconditional_training
 """
 
-def save_image(dataset):
-    image=next(iter(dataset))['image']
-    image.save('out.png')
-
 def conver_to_template(conversation, ground_truth=None):
     """    
     from: <image>\nThere is an image of traffic captured from the perspective of the ego car. Focus on objects influencing the ego car's driving behavior: vehicles (cars, trucks, buses, etc.), vulnerable road users (pedestrians, cyclists, motorcyclists), traffic signs (no parking, warning, directional, etc.), traffic lights (red, green, yellow), traffic cones, barriers, miscellaneous(debris, dustbin, animals, etc.). You must not discuss any objects beyond the seven categories above. Please describe each object's appearance, position, direction, and explain why it affects the ego car's behavior.
-
     to: prompt= 'USER: <image>\nPlease give me a one sentence caption about the image.\nASSISTANT:'
+    
+    USER: <image>\n<prompt>\nASSISTANT:
     """    
+    # test:
     # template=f'USER: {conversation} ASSISTANT: {ground_truth}'
+
+    # print(conversation)
     template=f'USER: {conversation}\nASSISTANT: {ground_truth}</s>'
     # print(template)
     return template
     
-# model_id = "llava-hf/llava-1.5-7b-hf"
-# processor = AutoProcessor.from_pretrained(model_id)
-
 class LLavaDataCollator:
     def __init__(self, processor):
         self.processor = processor
@@ -54,6 +51,7 @@ class LLavaDataCollator:
         text=[]
         # print(f"{len(batch)=}")
         for data in batch:
+            # print(data['id'])
             process_text=conver_to_template(data['conversations'][0]['value'], data['conversations'][1]['value'])
             image.append(data['image'])
             text.append(process_text)
@@ -95,10 +93,10 @@ def train(args):
     example1: https://colab.research.google.com/github/mrm8488/shared_colab_notebooks/blob/master/fine_tune_VLM_LlaVa.ipynb#scrollTo=ee1IMXszqWyU
     
     """
-    EPOCH=1
+    # EPOCH=1
     # step: load and prepare model, https://huggingface.co/llava-hf/llava-1.5-7b-hf
-    # model_id = "llava-hf/llava-1.5-7b-hf"
-    model_id = "finetune_llava-1.5-7b-hf_lora_3/checkpoint-28810"
+    model_id = "llava-hf/llava-1.5-7b-hf"
+    # model_id = "finetune_llava-1.5-7b-hf_lora_3_2/checkpoint-28810"
     bnb_config=BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_use_double_quant=True,
@@ -120,13 +118,12 @@ def train(args):
 
     # print(processor)
 
-    # bug: target_modules not found: https://github.com/AutoGPTQ/AutoGPTQ/issues/667
     peft_config = LoraConfig(
         target_modules=[
                 "q_proj", "k_proj", "v_proj", "o_proj"],
                 task_type=TaskType.CAUSAL_LM, 
                 inference_mode=False, 
-                r=8, lora_alpha=128, lora_dropout=0.3)
+                r=16, lora_alpha=256, lora_dropout=0.2)
     model = get_peft_model(model, peft_config) 
     # # ====freeze vision encoder====
     # for param in model.vision_tower.parameters():
@@ -137,6 +134,15 @@ def train(args):
     dataset= load_dataset("ntudlcv/dlcv_2024_final1", split='train')
     dataset_test= load_dataset("ntudlcv/dlcv_2024_final1",split='val')
     
+    # test: Regional task finetune, https://huggingface.co/docs/datasets/en/process
+    # print(len(dataset))
+    # print(dataset[0])
+    # dataset= dataset.filter(lambda example: 'region' in example["id"])
+    # print(len(dataset))
+    # print(dataset[0])
+
+
+
     dataset= dataset.with_format("torch")
     dataset_test= dataset_test.with_format("torch")
     print(len(dataset))
@@ -144,16 +150,16 @@ def train(args):
     # print(dataset_test[0])
     # # step: Training setting
     training_args = TrainingArguments(
-        output_dir="./finetune_llava-1.5-7b-hf_lora_3_2",
+        output_dir="./finetune_llava-1.5-7b-hf_lora_5_weight_decay",
         num_train_epochs=1,
-        # max_steps=14405,
+        max_steps=28810+7200,
         do_train=True,
         learning_rate=2e-5,
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         gradient_accumulation_steps=1,
         lr_scheduler_type ="cosine",
-        weight_decay=0.,
+        weight_decay=0.001,
 
         eval_strategy="epoch",
         save_strategy="epoch",

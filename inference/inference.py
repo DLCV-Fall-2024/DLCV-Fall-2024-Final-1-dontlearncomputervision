@@ -53,7 +53,7 @@ def inference(args):
     print(f"{len(dataset_test)=}")
     
     # TODO: seperate dataset into three different datasets for inference using "filter", https://huggingface.co/docs/datasets/en/process#shuffle
-    task_names=[ 'regional', 'suggestion', 'general',]
+    task_names=[  'general', 'regional', 'suggestion']
     # task_1_dataset=dataset_test.filter(lambda example: 'general' in example["id"])
     # task_2_dataset=dataset_test.filter(lambda example: 'region' in example["id"])
     # task_3_dataset=dataset_test.filter(lambda example: 'suggest' in example["id"])
@@ -83,7 +83,7 @@ def inference(args):
             
             # step: model 
             inputs=inputs.to(0)
-            cap_output = model.generate(**inputs, max_new_tokens=400, do_sample=False)
+            cap_output = model.generate(**inputs, max_new_tokens=500, do_sample=False)
 
             # step: saving
             for j, image_name in enumerate(image_names):
