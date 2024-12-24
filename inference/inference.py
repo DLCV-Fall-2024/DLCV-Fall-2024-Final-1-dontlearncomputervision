@@ -50,8 +50,14 @@ def inference(args):
     print(f"==== {len(dataset_test)=} ====")
     print(f"==== {args.use_prompt_tuning=} ====")
     print(f"==== {args.use_RAG=} ====")
-    vector_db_path="vector_db_path"
-    metadata_path="metadata_path"
+    task_names=['general', 'regional', 'suggestion']
+    vector_db_path= {'general':"vector_db_path_1", 
+                     'regional':"vector_db_path_2",
+                     'suggestion': "vector_db_path_3" }
+    
+    metadata_path=  {'general':"metadata_path_1", 
+                     'regional':"metadata_path_2",
+                     'suggestion': "metadata_path_3" }
             
     preprocess_class=DataPreprocess(use_RAG=args.use_RAG, model_id="llava-hf/llava-1.5-7b-hf",vector_db_path=vector_db_path, metadata_path=metadata_path )
     processor = preprocess_class.processor
@@ -61,9 +67,7 @@ def inference(args):
     elif args.use_prompt_tuning:
         preprocess= preprocess_class.preprocess_data_prompt_tuning
     
-    # TODO: seperate dataset into three different datasets for inference using "filter", https://huggingface.co/docs/datasets/en/process#shuffle
-    # step: put them into three seperate dataloader
-    task_names=[  'general', 'regional', 'suggestion']
+    # step: seperate dataset into three different datasets for inference using "filter", https://huggingface.co/docs/datasets/en/process#shuffle
     dataset_test=[dataset_test.filter(function=lambda example: task_name in example["id"], batch_size=16) for task_name in task_names]
     for task in dataset_test: print(len(task))
     dataloader_test=[ DataLoader(task, batch_size=args.batch_size, collate_fn=preprocess, shuffle=False) for task in dataset_test]

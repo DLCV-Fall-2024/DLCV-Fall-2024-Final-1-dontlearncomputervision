@@ -3,44 +3,51 @@ import numpy as np
 import faiss
 import json
 
+# TODO: embed a pil image into a concated embedding using other model(sam, clip, ...) 
+def embed_fn(input_image):
+    """
+    input: a pil image
+    output: a embedding
+    """
+    pass
 
 def retrieve_similar_images(query_embedding, index, top_k=3):
     """
-    input: a list of query_embeddings
+    input: one query_embedding (assume it is a tensor on gpu)
     output: 
         - distances: similarity of images 
-        - indices: 2D array, n*k, n= number of query_embeddings, k= top_k values
+        - indices: return the top-k indice of the 2D array, n*k, n= number of query_embeddings, k= top_k values
     """
     # query_embedding = query_embedding.astype(np.float32).reshape(1, -1)
-    query_vectors=np.array(query_embedding)
-    # query_embedding=query_embedding.detach().numpy().astype(np.float32)
-    # query_vectors = np.array([query_embedding])
+    query_embedding=query_embedding.detach().numpy().astype(np.float32)
+    query_vectors = np.array([query_embedding])
     
     distances, indices = index.search(query_vectors, top_k)
-    
+    # print(indices)
     # retrieved_images = [image_paths[int(idx)] for idx in indices[0]]
-    return distances, indices 
-
+    return distances[0], indices[0] 
 
 
 class DataPreprocess():
     def __init__(self, use_RAG=False, model_id="llava-hf/llava-1.5-7b-hf", vector_db_path=None, metadata_path=None):
+
+        self.task_names=['general', 'regional', 'suggestion']
         self.model_id = model_id
         self.processor = AutoProcessor.from_pretrained(model_id)
         self.use_RAG=use_RAG
-        self.vector_db_path=None
-        self.metadata_path=None
-        self.RAG_index=None
-        self.metadata=None
+        self.vector_db_path=vector_db_path
+        self.metadata_path=metadata_path
+        
+        self.RAG_index={}
+        self.metadata={}
 
         # TODO: adding RAG into data processing 
-        if self.use_RAG:
-            self.vector_db_path=vector_db_path
-            self.metadata_path=metadata_path
-            self.RAG_index=faiss.read_index(vector_db_path)
-            with open(metadata_path,'r') as f:
-                self.metadata= json.load(f)
-
+        if self.use_RAG: 
+            for task_name in self.task_names:
+                assert task_name in vector_db_path and task_name in metadata_path, "typo for input_path key"
+                self.RAG_index[task_name]=faiss.read_index(vector_db_path[task_name])
+                with open(metadata_path[task_name], 'r') as f:
+                    self.metadata[task_name]= json.load(f)
 
     def preprocess_data(self, batch):
         def conver_to_template(conversation):
@@ -96,7 +103,8 @@ class DataPreprocess():
                 prompt_command="Please describe the object inside the red rectangle in the image and explain why it affect ego car driving."
                 prompt=prompt_charactor+prompt_constrain+prompt_command
                 # print(prompt)
-            template=f'USER: <image>\n{prompt}\nASSISTANT:'
+            
+            template=f'USER: <image>\n{prompt} ASSISTANT:'
             return template
         # ==========================================================================================================================================================================================
         image=[]
@@ -113,19 +121,16 @@ class DataPreprocess():
         return inputs, image_names
 
     def preprocess_data_RAG_prompt_tuning(self, batch):
-        def conver_to_template(task, conversation, retrieve_conversation):
+        def conver_to_template(task, retrieve_conversation):
             """    
             from: <image>\nThere is an image of traffic captured from the perspective of the ego car. Focus on objects influencing the ego car's driving behavior: vehicles (cars, trucks, buses, etc.), vulnerable road users (pedestrians, cyclists, motorcyclists), traffic signs (no parking, warning, directional, etc.), traffic lights (red, green, yellow), traffic cones, barriers, miscellaneous(debris, dustbin, animals, etc.). You must not discuss any objects beyond the seven categories above. Please describe each object's appearance, position, direction, and explain why it affects the ego car's behavior.
             to: prompt= 'USER: <image>\nPlease give me a one sentence caption about the image. ASSISTANT:'
             """    
             prompt=""
-            RAG_example_text=retrieve_conversation            
             prompt_charactor="You are a traffic analysis assistant. "
-            prompt_context="Here is a similar example for the following task:\n"+ RAG_example_text
+            prompt_context="Here is a similar example for the following task: "+ retrieve_conversation
             # TODO: process three type of template 
             if 'general' in task:
-                # retrieved from RAG
-                # origianl prompt
                 prompt_constrain="There is an image of traffic captured from the perspective of the ego car. Focus on objects influencing the ego car's driving behavior: vehicles (cars, trucks, buses, etc.), vulnerable road users (pedestrians, cyclists, motorcyclists), traffic signs (no parking, warning, directional, etc.), traffic lights (red, green, yellow), traffic cones, barriers, miscellaneous(debris, dustbin, animals, etc.). You must not discuss any objects beyond the seven categories above. "
                 prompt_command="Please describe each object's appearance, position, direction, and explain why it affects the ego car's behavior."
                 prompt=prompt_charactor+prompt_constrain+prompt_context+prompt_command
@@ -142,32 +147,39 @@ class DataPreprocess():
                 """
                 Please describe the object inside the red rectangle in the image and explain why it affect ego car driving.
                 """
-                # prompt_context="Here is a similar example for the following task:\n"+ RAG_example_text
                 prompt_command="Please describe the object inside the red rectangle in the image and explain why it affect ego car driving."
                 prompt=prompt_charactor+prompt_context+prompt_command
                 
-            template=f'USER: <image>\n{prompt}\nASSISTANT:'
+            template=f'USER: <image>\n{prompt} ASSISTANT:'
             return template
         # ==========================================================================================================================================================================================
         image=[]
         text=[]
         image_names=[]
-        RAG=''
-        # TODO: RAG retrieve data
-        # step RAG : preprocess images into concatenated embeddings using Semantic SAM and Depth anything, one image at a time
-        # concated_embedding_list=[embed_fn(image) for image in data['image']]
-        # distance, indices= retrieve_similar_images(concated_embedding_list, RAG_index, top_k=3)
-        # retrieved_data_list=[metadata[str(i[0])]['conversations'] for i in indices]
-        
         for data in batch:
-            process_text=conver_to_template(data['id'], data['conversations'][0]['value'], )
-            # print(process_text)
+            task=data['id'].split('_')[1]
+
+            # TODO: RAG retrieve data
+            # step: preprocess test images into concatenated embeddings using Semantic SAM and Depth anything
+            concated_embedding= embed_fn(data['image'].copy())  # TODO: embed_fn, embed test image into a concated embedding 
+            
+            # step: To get the most similiar image in the database
+            distance, indice= retrieve_similar_images(concated_embedding, self.RAG_index[task], top_k=3)
+            
+            # step: To get the meta data of the image 
+            top_1=indice[0]
+            retrieved_data= self.metadata[task][str(top_1)]['conversations']
+            
+            # step: Prompt tuning 
+            process_text=conver_to_template(data['id'], retrieved_data )
+            
+            # step: append data into a list for processor to tokenize and transform
             image.append(data['image'])
             text.append(process_text)
-            image_names.append(data['id'])
+            image_names.append(data['id']) # for output .json format
+        
+        # step: Using processor to tokenize and transform
         inputs = self.processor(images=image, text=text,  padding=True, return_tensors='pt')        
-        # inputs['ids']=image_name
-        # print(inputs['pixel_values'].shape)
         return inputs, image_names
 
 # if __name__=='__main__':
