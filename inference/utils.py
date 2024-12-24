@@ -1,7 +1,122 @@
-from transformers import AutoProcessor
-import numpy as np
-import faiss
+import os
+import cv2
+import clip
+import glob
 import json
+import faiss
+import torch
+import argparse
+import matplotlib
+import numpy as np
+from PIL import Image
+from ultralytics import YOLO
+from datasets import load_dataset
+from transformers import AutoProcessor
+from depth_anything_v2.dpt import DepthAnythingV2
+
+# TODO: change the path of each model's checkpoint
+depth_anything_ckpt_path = 'depth_anything_v2_vitb.pth'
+yolov11_ckpt_path = 'yolov11l-seg.pt'
+finetuned_yolov11_ckpt_path = 'traffic_sign.pt'
+
+# hyperparameters
+DEVICE = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+clip_model, preprocess = clip.load("ViT-B/32", device=DEVICE)
+
+
+def generate_original_image_embedding(input_img):
+    """
+    input_img: data['image']
+    output: input image's embedding (size: 1 * 512)
+    """
+    image = preprocess(input_img).unsqueeze(0).to(DEVICE)
+    with torch.no_grad():
+        image_features = clip_model.encode_image(image)
+    original_embedding = image_features.cpu().numpy()  # numpy.ndarray
+    return original_embedding
+
+
+def generate_depth_map_embedding(input_img):
+    """
+    input_img: data['image']
+    output: input image's depth map embedding (size: 1 * 512)
+    """
+    depth_anything = DepthAnythingV2(encoder='vitb', features=128, out_channels=[96, 192, 384, 768])
+    depth_anything.load_state_dict(torch.load(depth_anything_ckpt_path, map_location='cpu'))
+    depth_anything = depth_anything.to(DEVICE).eval()
+    cmap = matplotlib.colormaps.get_cmap('Spectral_r')
+
+    raw_image = np.array(input_img)
+    depth = depth_anything.infer_image(raw_image, 518)
+    depth = (depth - depth.min()) / (depth.max() - depth.min()) * 255.0
+    depth = depth.astype(np.uint8)
+    depth = (cmap(depth)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
+
+    # # convert type to PIL
+    # depth = depth.astype(np.uint8)
+    # pil_image = Image.fromarray(depth)
+    # # print(type(pil_image))  # PIL.Image.Image
+    # # print(pil_image.size)   # (1355, 720)
+    # image = preprocess(pil_image).unsqueeze(0).to(DEVICE)  # TEST: the input of preprocess should be PIL.PngImagePlugin.PngImageFile, don't know if PIL.Image.Imageis available or not
+    # # print(type(image))  # torch.Tensor
+    # # print(image.shape)  # torch.Size([1, 3, 224, 224])
+
+    os.makedirs("./inference_output/depth_map/", exist_ok=True)
+    cv2.imwrite(os.path.join("./inference_output/depth_map", 'depth_image.png'), depth)
+    image = preprocess(Image.open("./inference_output/depth_map/depth_image.png")).unsqueeze(0).to(DEVICE)
+    with torch.no_grad():
+        image_features = clip_model.encode_image(image)
+    depth_embedding = image_features.cpu().numpy()  # numpy.ndarray
+    return depth_embedding
+
+
+def generate_segment_image_embedding(input_img):
+    """
+    input_img: data['image']
+    output: input image's segment image embedding (size: 1 * 512)
+    """
+    yolo_model = YOLO(yolov11_ckpt_path)
+    results = yolo_model.predict(source=input_img, save=False, save_txt=True, show_boxes=False)  # save=False 表示不儲存到默認路徑
+    result_image = results[0].plot(boxes=False)  # YOLO 結果支援直接生成繪製後的影像 (NumPy array)
+    rgb_image = cv2.cvtColor(result_image, cv2.COLOR_RGB2BGR)
+
+    output_dir = "./inference_output/segment_image/"
+    os.makedirs(output_dir, exist_ok=True)
+    save_path = os.path.join(output_dir, "segment_image.jpg")
+    Image.fromarray(rgb_image).save(save_path)
+
+    image = preprocess(Image.open("./inference_output/segment_image/segment_image.jpg")).unsqueeze(0).to(DEVICE)
+
+    with torch.no_grad():
+        image_features = clip_model.encode_image(image)
+    segment_embedding = image_features.cpu().numpy()  # numpy.ndarray
+
+    return segment_embedding
+
+
+def generate_bbox_image_embedding(input_img):
+    """
+    input_img: data['image']
+    output: input image's bbox image embedding (size: 1 * 512)
+    """
+    model = YOLO(finetuned_yolov11_ckpt_path)  # 載入我們 finetune 過後的 YOLO 模型
+    results = model.predict(source=input_img, save=False, save_txt=True, show_boxes=False)  # save=False 表示不儲存到默認路徑
+    result_image = results[0].plot(boxes=True, labels=False)  # YOLO 結果支援直接生成繪製後的影像 (NumPy array)
+    rgb_image = cv2.cvtColor(result_image, cv2.COLOR_RGB2BGR)
+
+    output_dir = "./inference_output/bbox_image/"
+    os.makedirs(output_dir, exist_ok=True)
+    save_path = os.path.join(output_dir, "bbox_image.jpg")
+    Image.fromarray(rgb_image).save(save_path)
+
+    image = preprocess(Image.open("./inference_output/bbox_image/bbox_image.jpg")).unsqueeze(0).to(DEVICE)
+
+    with torch.no_grad():
+        image_features = clip_model.encode_image(image)
+    bbox_embedding = image_features.cpu().numpy()  # numpy.ndarray
+
+    return bbox_embedding
+
 
 # TODO: embed a pil image into a concated embedding using other model(sam, clip, ...) 
 def embed_fn(input_image):
@@ -9,7 +124,16 @@ def embed_fn(input_image):
     input: a pil image
     output: a embedding
     """
-    pass
+    original_embedding = generate_original_image_embedding(input_image)
+    depth_map_embedding = generate_depth_map_embedding(input_image)
+    segment_image_embedding = generate_segment_image_embedding(input_image)
+    bbox_image_embedding = generate_bbox_image_embedding(input_image)
+
+    concated_embedding = np.concatenate((original_embedding, depth_map_embedding, segment_image_embedding, bbox_image_embedding), axis=1)
+    print(f"concated_embedding shape: {concated_embedding.shape}")  # (1, 2048)
+
+    return concated_embedding
+
 
 def retrieve_similar_images(query_embedding, index, top_k=3):
     """
