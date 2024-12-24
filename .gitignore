@@ -5,6 +5,6 @@ test/
 val/
 *.zip
 *.json
-*.ipynb
 .txt
 !few_shot/**/*.json
+data/*
