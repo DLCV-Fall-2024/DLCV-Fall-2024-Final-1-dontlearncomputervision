@@ -51,6 +51,7 @@ def inference(args):
     print(f"==== {args.use_prompt_tuning=} ====")
     print(f"==== {args.use_RAG=} ====")
     task_names=['general', 'regional', 'suggestion']
+    # TODO: write the correct path for vector_db_path and metadata_path
     vector_db_path= {'general':"vector_db_path_1", 
                      'regional':"vector_db_path_2",
                      'suggestion': "vector_db_path_3" }
