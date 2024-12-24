@@ -11,3 +11,4 @@ val/
 dlcv_final_dataset/*
 finetune_llava-1.5-7b-hf_lora*/*
 wandb/*
+evaluate.sh

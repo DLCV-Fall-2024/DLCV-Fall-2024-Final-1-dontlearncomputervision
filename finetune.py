@@ -95,8 +95,8 @@ def train(args):
     """
     # EPOCH=1
     # step: load and prepare model, https://huggingface.co/llava-hf/llava-1.5-7b-hf
-    model_id = "llava-hf/llava-1.5-7b-hf"
-    # model_id = "finetune_llava-1.5-7b-hf_lora_3_2/checkpoint-28810"
+    # model_id = "llava-hf/llava-1.5-7b-hf"
+    model_id = "finetune_llava-1.5-7b-hf_lora_5_weight_decay/checkpoint-57620"
     bnb_config=BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_use_double_quant=True,
@@ -133,15 +133,6 @@ def train(args):
     # step: load and prepare dataset
     dataset= load_dataset("ntudlcv/dlcv_2024_final1", split='train')
     dataset_test= load_dataset("ntudlcv/dlcv_2024_final1",split='val')
-    
-    # test: Regional task finetune, https://huggingface.co/docs/datasets/en/process
-    # print(len(dataset))
-    # print(dataset[0])
-    # dataset= dataset.filter(lambda example: 'region' in example["id"])
-    # print(len(dataset))
-    # print(dataset[0])
-
-
 
     dataset= dataset.with_format("torch")
     dataset_test= dataset_test.with_format("torch")
@@ -150,9 +141,9 @@ def train(args):
     # print(dataset_test[0])
     # # step: Training setting
     training_args = TrainingArguments(
-        output_dir="./finetune_llava-1.5-7b-hf_lora_5_weight_decay",
-        num_train_epochs=1,
-        max_steps=28810+7200,
+        output_dir="finetune_llava-1.5-7b-hf_lora_5_weight_decay",
+        num_train_epochs=3,
+        # max_steps=,
         do_train=True,
         learning_rate=2e-5,
         per_device_train_batch_size=1,
@@ -177,12 +168,11 @@ def train(args):
         train_dataset=dataset,
         eval_dataset=dataset_test,
         data_collator=data_collator,
-        # processing_class=processor,
-        # compute_metrics=compute_metrics,
     )
 
-    trainer.train()
+    trainer.train(resume_from_checkpoint=True)
     model.print_trainable_parameters()
+    trainer.save_model('model_output')
 
     
 if __name__=="__main__":

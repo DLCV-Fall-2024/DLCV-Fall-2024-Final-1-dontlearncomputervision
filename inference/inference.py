@@ -84,7 +84,7 @@ def inference(args):
             
             # step: model 
             inputs=inputs.to(0)
-            cap_output = model.generate(**inputs, max_new_tokens=550, do_sample=False)
+            cap_output = model.generate(**inputs, max_new_tokens=500, num_beams=1, do_sample=False)
 
             # step: saving
             for j, image_name in enumerate(image_names):
