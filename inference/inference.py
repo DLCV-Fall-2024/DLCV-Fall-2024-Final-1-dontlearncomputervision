@@ -5,7 +5,7 @@ import os
 import json
 from tqdm import tqdm
 from argparse import ArgumentParser
-from transformers import LlavaForConditionalGeneration
+from transformers import LlavaForConditionalGeneration, AutoModelForCausalLM
 from transformers import BitsAndBytesConfig
 from utils import *
 """
@@ -41,6 +41,11 @@ def inference(args):
         model_id, 
         quantization_config=bnb_config
     )
+    # model = AutoModelForCausalLM.from_pretrained(
+    #     model_id, 
+    #     device_map="auto",
+    #     torch_dtype="auto"
+    # )
     model.eval()
 
     # step: load and prepare dataset
@@ -52,22 +57,27 @@ def inference(args):
     print(f"==== {args.use_RAG=} ====")
     task_names=['general', 'regional', 'suggestion']
     # TODO: write the correct path for vector_db_path and metadata_path
-    vector_db_path= {'general':"vector_db_path_1", 
-                     'regional':"vector_db_path_2",
-                     'suggestion': "vector_db_path_3" }
+    vector_db_path= {'general':"./inference/RAG_dataset/original_depth_yolo_train_general.index", 
+                     'regional':"./inference/RAG_dataset/original_depth_yolo_train_regional.index",
+                     'suggestion': "./inference/RAG_dataset/original_depth_yolo_train_suggestion.index"}
     
-    metadata_path=  {'general':"metadata_path_1", 
-                     'regional':"metadata_path_2",
-                     'suggestion': "metadata_path_3" }
+    metadata_path=  {'general':"./inference/metadata/metadata_train_general.json", 
+                     'regional':"./inference/metadata/metadata_train_regional.json",
+                     'suggestion': "./inference/metadata/metadata_train_suggestion.json" }
             
-    preprocess_class=DataPreprocess(use_RAG=args.use_RAG, model_id="llava-hf/llava-1.5-7b-hf",vector_db_path=vector_db_path, metadata_path=metadata_path )
+    preprocess_class=DataPreprocess(use_RAG=args.use_RAG, llava_model=model, model_id="llava-hf/llava-1.5-7b-hf",vector_db_path=vector_db_path, metadata_path=metadata_path )
+    
     processor = preprocess_class.processor
     preprocess=preprocess_class.preprocess_data
     if args.use_RAG: # highest priorority
+        print("==== use_RAG ====")
         preprocess= preprocess_class.preprocess_data_RAG_prompt_tuning
     elif args.use_prompt_tuning:
+        print("==== use_prompt_tuning ====")
         preprocess= preprocess_class.preprocess_data_prompt_tuning
-    
+    else:
+        print("==== use default ====")
+        
     # step: seperate dataset into three different datasets for inference using "filter", https://huggingface.co/docs/datasets/en/process#shuffle
     dataset_test=[dataset_test.filter(function=lambda example: task_name in example["id"], batch_size=16) for task_name in task_names]
     for task in dataset_test: print(len(task))
@@ -95,7 +105,8 @@ def inference(args):
             for j, image_name in enumerate(image_names):
                 caption=processor.decode(cap_output[j][2:], skip_special_tokens=True) # step: decode and parse output 
                 image_name=image_names[j]
-                caption_dict[image_name]=caption.split(':')[-1]
+                content=caption.split(':')[-1]
+                caption_dict[image_name]=content
                 with open(save_json_path, 'w') as f:
                     json.dump(caption_dict, f, indent=2)
         print(f"save at: {save_json_path=}")
@@ -103,7 +114,7 @@ def inference(args):
 if __name__=="__main__":
     parser = ArgumentParser()
     parser.add_argument("--model", default="llava-hf/llava-1.5-7b-hf", help="Image root")
-    parser.add_argument("--save_json_path", default="inference/baseline.json", help="output json file")
+    parser.add_argument("--save_json_path", default="./output/baseline.json", help="output json file")
     parser.add_argument("--batch_size", default=4, type=int, help="batch size")
     parser.add_argument("--use_prompt_tuning", action='store_true', help="use_prompt_tuning or not")
     parser.add_argument("--use_RAG", action='store_true', help="use_RAG for prompt tuning or not")
