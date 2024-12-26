@@ -12,6 +12,8 @@ $ conda create -n llava python=3.10 -y
 $ conda activate llava
 $ pip install --upgrade pip  # enable PEP 660 support
 $ pip install -e .
+
+$ cd ..
 ```
 2. Setup Depth-Anything-v2
 ```bash
@@ -23,6 +25,8 @@ $ pip install matplotlib
 $ pip install opencv-python
 $ pip install torch
 $ pip install torchvision
+$ pip install datasets
+$ pip install -r requirements.txt
 ```
 3. Setup YOLOv11
 ```bash
@@ -59,10 +63,21 @@ $ python download.py
 ```
 
 
-## Inference
+## Inference (with RAG)
 ```bash
 # Please ensure you are in the llava env
 # Run this command to reproduce our result 
+# Can modify json filename ang batch size in the shell script
 
 $ bash inference_RAG.sh
+```
+
+## Inference (with Lora only)
+```bash
+# Please ensure you are in the llava env
+# Run this command to reproduce our result 
+# Can modify json filename ang batch size in the shell script
+# best score (the one on the leaderboard)
+
+$ bash inference_finetuned_lora.sh
 ```
